@@ -2,7 +2,7 @@
 
 This repository is a programming challenge. You're building a micro-service which will ingest data of arbitrary shape and type and balance the incoming data across strongly typed MySQL tables so that the data can be queried further. Read the following [Current Code](#current-code) section to understand what the `main.go` file of this repository is doing. Alternatively, or additionally, read `main.go` to understand what the `main.go` file of this repository is doing. Then, read the [Objectives](#objectives) section of this README to understand the challenge expectations.
 
-As you develop code, commit and push directly to this repository. As instructed below, use git tags to mark your progress. When you are done, the code will be reviewed and discussed with you.
+As you develop code, create branches and submit pull requests to this repository. Names for pull requests will be mentioned in the instructions below. Merge these PRs as you go and when you are done, we'll use them to review the code.
 
 ## Current Code
 
@@ -141,31 +141,25 @@ mysql> select * from dog_registry where breed = "labrador" and name != "max" ord
 
 Keep in mind that `databalancer` may be run on many web servers, so all web requests must be stateless. Authentication is outside the scope of this exercise.
 
-Do this and create a [git tag](https://git-scm.com/book/en/v2/Git-Basics-Tagging) called `dynamic-tables`:
+Do this and create a pull request called `dynamic-tables`. Make note of any compromises/ considerations in your code due to the time constraint.
 
-```
-git tag dynamic-tables
-```
+Merge this PR. 
 
 ### Query API
 
 Once dynamic tables are created, we need to expose the ability to users to query the datasets. Add a new HTTP endpoint which accepts a SQL query and returns the results. Document the request and response format.
 
-Once you've added APIs for querying the datasets, create a git tag called "query-api":
+Once you've added APIs for querying the datasets, create a pull request called `query-api`. Make note of any compromises/ considerations in your code due to the time constraint.
 
-```
-git tag query-api
-```
+Merge this PR. 
 
 ### Multiple MySQL databases
 
 Use Docker and Docker Compose to add a few more MySQL databases. For now, assume that all of the log_events in a single log family can fit on a single database, but the total data being streamed from all log families will not. Thus, you must load balance between 2 or more MySQL database servers, while keeping track of what data is where. Update the query API to support this new functionality.
 
-Once your application supports streaming logs into a sharded MySQL, create a git tag called "mysql-sharding":
+Once your application supports streaming logs into a sharded MySQL, create a pull request called `mysql-sharding`. Make note of any compromises/ considerations in your code due to the time constraint.
 
-```
-git tag mysql-sharding
-```
+Merge this PR. 
 
 ### Bonus
 
