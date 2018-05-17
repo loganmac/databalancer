@@ -13,7 +13,7 @@ import (
 // Table defines methods for inserting and querying logs for that table
 type Table struct {
 	*sql.DB // selected db for table
-	family  string
+	family  logs.Family
 	schema  logs.Schema
 }
 
@@ -72,7 +72,7 @@ func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (db.T
 		return nil, errors.Wrap(err, "executing create statement")
 	}
 
-	return &Table{DB: c.DB, family: string(family), schema: schema}, nil
+	return &Table{DB: c.DB, family: family, schema: schema}, nil
 }
 
 // Insert creates a new record in the supplied table
@@ -82,7 +82,7 @@ func (t *Table) Insert(log []byte) error {
 		return errors.Wrap(err, "creating insert statement")
 	}
 
-	res, err := stmt.Exec(t.family, log)
+	res, err := stmt.Exec(string(t.family), log)
 	if err != nil {
 		return errors.Wrap(err, "executing insert statement")
 	}

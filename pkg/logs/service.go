@@ -18,9 +18,6 @@ type Service struct {
 	db DBClient
 }
 
-// ID is the log ID type
-type ID int64
-
 // Family is the table name for a group of logs
 type Family string
 
