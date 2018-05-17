@@ -33,7 +33,7 @@ func CreateService(db DBClient) *Service {
 }
 
 // Ingest is a method which ingests logs into the database.
-// It parses logs, finds or creates the database table,
+// It finds or creates the database table,  parses logs,
 // and writes the logs to the selected table.
 func (s *Service) Ingest(family Family, schema Schema, logs []Raw) error {
 	table, err := s.db.FindOrCreateTable(family, schema)
