@@ -72,7 +72,13 @@ func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (db.T
 		return nil, errors.Wrap(err, "executing create statement")
 	}
 
-	return &Table{DB: c.DB, family: family, schema: schema}, nil
+	// construct the table
+	table := &Table{DB: c.DB, family: family, schema: schema}
+
+	// cache the table
+	c.tables[family] = table
+
+	return table, nil
 }
 
 // Insert creates a new record in the supplied table
