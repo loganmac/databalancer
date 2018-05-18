@@ -47,6 +47,7 @@ func (h *handler) ingestLogHandler(w http.ResponseWriter, r *http.Request) {
 	// decode the request
 	var body IngestLogBody
 	err := json.NewDecoder(r.Body).Decode(&body)
+	// TODO: Add validation, responding about how the request was invalid with a 400 request
 	if err != nil {
 		http.Error(w, "An error occured parsing JSON: "+err.Error(), http.StatusInternalServerError)
 		// TODO: change to structured logger and use debug level logging, or report to error aggregation service

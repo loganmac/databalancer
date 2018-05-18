@@ -80,3 +80,8 @@ func (s *Service) Ingest(family Family, schema Schema, logs []Raw) error {
 
 	return nil
 }
+
+// String method for Family in case underlying type changes
+func (f Family) String() string {
+	return string(f)
+}

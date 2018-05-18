@@ -12,15 +12,14 @@ import (
 
 // Table defines methods for inserting and querying logs for that table
 type Table struct {
-	*sql.DB // selected db for table
-	family  logs.Family
-	schema  logs.Schema
+	insert *sql.Stmt   // prepared statement for inserting
+	family logs.Family // family (table name) for the table
+	schema logs.Schema // schema of the table from request
 }
 
 // Client is a connection to a MySQL database
 type Client struct {
-	*sql.DB                        // underlying database
-	tables  map[logs.Family]*Table // a kind of local cache for tables
+	*sql.DB // underlying database
 }
 
 // Create makes a new MySQL database client and ensures that it's connected
@@ -51,10 +50,6 @@ func Create(username, password, address, name string) (*Client, error) {
 // FindOrCreateTable finds or creates the table based on the given
 // attributes with the client, caching it in the process
 func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (db.Table, error) {
-	if table, ok := c.tables[family]; ok == true {
-		return table, nil
-	}
-
 	create, err := c.Prepare(
 		"CREATE TABLE IF NOT EXISTS `raw_logs` (" +
 			"`id` INT NOT NULL AUTO_INCREMENT," +
@@ -67,33 +62,29 @@ func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (db.T
 		return nil, errors.Wrap(err, "preparing create statement")
 	}
 
+	// create the table
 	_, err = create.Exec()
 	if err != nil {
 		return nil, errors.Wrap(err, "executing create statement")
 	}
 
-	// construct the table
-	table := &Table{DB: c.DB, family: family, schema: schema}
+	// create the insert prepared statement
+	insert, err := c.Prepare("INSERT INTO `raw_logs` (`family`, `log`) VALUES(?, ?);")
+	if err != nil {
+		return nil, errors.Wrap(err, "creating insert statement")
+	}
 
-	// cache the table
-	c.tables[family] = table
-
-	return table, nil
+	return &Table{insert: insert, family: family, schema: schema}, nil
 }
 
 // Insert creates a new record in the supplied table
 func (t *Table) Insert(log []byte) error {
-	stmt, err := t.Prepare("INSERT INTO `raw_logs` (`family`, `log`) VALUES(?, ?);")
-	if err != nil {
-		return errors.Wrap(err, "creating insert statement")
-	}
-
-	res, err := stmt.Exec(string(t.family), log)
+	res, err := t.insert.Exec(t.family.String(), log)
 	if err != nil {
 		return errors.Wrap(err, "executing insert statement")
 	}
 
-	// last id is not currently used
+	// verify record was inserted
 	if _, err := res.LastInsertId(); err != nil {
 		return errors.Wrap(err, "inserting record")
 	}
