@@ -52,6 +52,14 @@ func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
 		return errors.Wrapf(err, "creating table %s", family)
 	}
 
+	// return if there are no logs to insert
+	// NOTE: I'm not sure this is desirable from a product perspective,
+	// but this allows you to make requests with just the schema to create
+	// tables
+	if len(logs) == 0 {
+		return nil
+	}
+
 	if err := table.Insert(logs); err != nil {
 		// TODO: check and convert errors
 		return err

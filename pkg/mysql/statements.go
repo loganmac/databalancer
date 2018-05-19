@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"sort"
 	"strings"
 )
 
@@ -21,6 +22,10 @@ func CreateTableStatement(name string, schema map[string]string) string {
 			tableFields = append(tableFields, field)
 		}
 	}
+	// sort the fields
+	sort.Strings(tableFields)
+
+	// join them
 	safeTableFields := strings.Join(tableFields, "")
 
 	stmt := "CREATE TABLE IF NOT EXISTS `" +
@@ -49,6 +54,9 @@ func InsertTableStatement(name string, schema map[string]string, records []map[s
 		// append safe field name and to list of fields
 		fieldNames = append(fieldNames, Escape(fieldName))
 	}
+	// sort the fields
+	sort.Strings(fieldNames)
+
 	// concatenate the field names and wrap in backticks
 	var safeTableFields = "`" + strings.Join(fieldNames, "`, `") + "`"
 
@@ -65,7 +73,10 @@ func InsertTableStatement(name string, schema map[string]string, records []map[s
 
 		for _, fieldName := range fieldNames {
 			// append field values as arguments
-			args = append(args, record[fieldName])
+			fieldValue := record[fieldName]
+			if fieldValue != nil {
+				args = append(args, fieldValue)
+			}
 		}
 	}
 	// join the value bind vars
