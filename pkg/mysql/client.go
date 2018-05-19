@@ -5,25 +5,25 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/kolide/databalancer-logan/pkg/db"
+	_ "github.com/go-sql-driver/mysql" //mysql driver
 	"github.com/kolide/databalancer-logan/pkg/logs"
 	"github.com/pkg/errors"
 )
-
-// Table defines methods for inserting and querying logs for that table
-type Table struct {
-	insert *sql.Stmt   // prepared statement for inserting
-	family logs.Family // family (table name) for the table
-	schema logs.Schema // schema of the table from request
-}
 
 // Client is a connection to a MySQL database
 type Client struct {
 	*sql.DB // underlying database
 }
 
-// Create makes a new MySQL database client and ensures that it's connected
-func Create(username, password, address, name string) (*Client, error) {
+// Table defines methods for inserting and querying logs for that table
+type Table struct {
+	*sql.DB                   // database for table
+	name    string            // table name
+	schema  map[string]string // schema of the table from request
+}
+
+// NewClient makes a new MySQL database client and ensures that it's connected
+func NewClient(username, password, address, name string) (*Client, error) {
 	connectionString := fmt.Sprintf(
 		"%s:%s@(%s)/%s?charset=utf8&parseTime=True&loc=Local",
 		username,
@@ -43,50 +43,37 @@ func Create(username, password, address, name string) (*Client, error) {
 	}
 
 	log.Printf("Connected to MySQL as %s at %s\n", username, address)
-
 	return &Client{DB: db}, nil
 }
 
-// FindOrCreateTable finds or creates the table based on the given
-// attributes with the client, caching it in the process
-func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (db.Table, error) {
-	create, err := c.Prepare(
-		"CREATE TABLE IF NOT EXISTS `raw_logs` (" +
-			"`id` INT NOT NULL AUTO_INCREMENT," +
-			"`family` TEXT," +
-			"`log` TEXT," +
-			"PRIMARY KEY(`id`)" +
-			");",
-	)
+// CreateTable creates the the table (if it doesn't exist) based on the given
+// attributes with the client and creates an Insert method.
+func (c *Client) CreateTable(name logs.Family, schema logs.Schema) (logs.Table, error) {
+	// construct create table statement
+	create := CreateTableStatement(name.String(), schema)
+
+	// create the table with the template args
+	log.Printf("Create statment: \n%+v\n", create)
+	_, err := c.Exec(create)
 	if err != nil {
-		return nil, errors.Wrap(err, "preparing create statement")
+		return nil, errors.Wrapf(err, "creating %s table", name)
 	}
 
-	// create the table
-	_, err = create.Exec()
-	if err != nil {
-		return nil, errors.Wrap(err, "executing create statement")
-	}
-
-	// create the insert prepared statement
-	insert, err := c.Prepare("INSERT INTO `raw_logs` (`family`, `log`) VALUES(?, ?);")
-	if err != nil {
-		return nil, errors.Wrap(err, "creating insert statement")
-	}
-
-	return &Table{insert: insert, family: family, schema: schema}, nil
+	return &Table{DB: c.DB, name: name.String(), schema: schema}, nil
 }
 
-// Insert creates a new record in the supplied table
-func (t *Table) Insert(log []byte) error {
-	res, err := t.insert.Exec(t.family.String(), log)
-	if err != nil {
-		return errors.Wrap(err, "executing insert statement")
-	}
+// Insert creates new logs in the supplied table
+func (t *Table) Insert(logs logs.Raw) error {
+	// construct insert statement
+	insert, args := InsertTableStatement(t.name, t.schema, logs)
 
-	// verify record was inserted
-	if _, err := res.LastInsertId(); err != nil {
-		return errors.Wrap(err, "inserting record")
+	log.Printf("Insert statment: \n%+v\n", insert)
+	log.Printf("Args: \n%+v\n", args)
+
+	// insert the data
+	_, err := t.Exec(insert, args...)
+	if err != nil {
+		return errors.Wrapf(err, "inserting records for %s table", t.name)
 	}
 
 	return nil
