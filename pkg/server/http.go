@@ -11,7 +11,7 @@ import (
 
 // LogService contains the methods for the log processing service
 type LogService interface {
-	Ingest(family logs.Family, schema logs.Schema, logs []logs.Raw) error
+	Ingest(family logs.Family, schema logs.Schema, logs logs.Raw) error
 }
 
 // handler is an internal wrapper around HTTP handlers that allows us to pass
@@ -25,7 +25,7 @@ type handler struct {
 type IngestLogBody struct {
 	Family logs.Family `json:"family"`
 	Schema logs.Schema `json:"schema"`
-	Logs   []logs.Raw  `json:"logs"`
+	Logs   logs.Raw    `json:"logs"`
 }
 
 // ServeHTTP implements the HandlerFunc interface in the net/http package.
