@@ -54,20 +54,16 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Route not found: "+r.Method+" "+r.URL.Path, http.StatusNotFound)
 }
 
-// ingestLogBody is the format of the JSON required in the body of a request to
-// the IngestLogHandler
-type ingestLogBody struct {
-	Family logs.Family `json:"family"`
-	Schema logs.Schema `json:"schema"`
-	Logs   logs.JSON   `json:"logs"`
-}
-
 // ingestLogHandler is an HTTP handler which ingests logs from the network
 func (h *handler) ingestLogHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// decode the request
-	var body ingestLogBody
+	var body struct {
+		Family logs.Family `json:"family"`
+		Schema logs.Schema `json:"schema"`
+		Logs   logs.JSON   `json:"logs"`
+	}
 	err := json.NewDecoder(r.Body).Decode(&body)
 	// TODO: Add validation, responding about how the request was invalid with a 400 request
 	if err != nil {

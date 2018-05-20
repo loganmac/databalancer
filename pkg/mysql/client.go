@@ -22,8 +22,8 @@ type Table struct {
 	Schema   map[string]string // schema of the table from request
 }
 
-// NewClient makes a new MySQL database client and ensures that it's connected
-func NewClient(username, password, address, name string) (*Client, error) {
+// CreateClient makes a new MySQL database client and ensures that it's connected
+func CreateClient(username, password, address, name string) (*Client, error) {
 	connectionString := fmt.Sprintf(
 		"%s:%s@(%s)/%s?charset=utf8&parseTime=True&loc=Local",
 		username,
@@ -66,15 +66,11 @@ func (t *Table) Insert(logs logs.JSON) error {
 	// construct insert statement
 	insert, args := InsertTableStatement(t.Name, t.Schema, logs)
 
-	log.Printf("Insert statment: \n%+v\n", insert)
-	log.Printf("Args: \n%+v\n", args)
-
 	// insert the data
 	_, err := t.Exec(insert, args...)
 	if err != nil {
 		return errors.Wrapf(err, "inserting records for %s table", t.Name)
 	}
-
 	return nil
 }
 
