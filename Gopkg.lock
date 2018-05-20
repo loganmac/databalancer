@@ -14,6 +14,15 @@
   version = "v1.3.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/jmoiron/sqlx"
+  packages = [
+    ".",
+    "reflectx"
+  ]
+  revision = "2aeb6a910c2b94f2d5eb53d9895d80e27264ec41"
+
+[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
@@ -31,9 +40,21 @@
   revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
   version = "v1.2.1"
 
+[[projects]]
+  branch = "master"
+  name = "github.com/xwb1989/sqlparser"
+  packages = [
+    ".",
+    "dependency/bytes2",
+    "dependency/hack",
+    "dependency/querypb",
+    "dependency/sqltypes"
+  ]
+  revision = "da747e0c62c4e145ebd7484cf69f92c0dd192305"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "317f8cf593869bc1303c2c2783553cac60ef956e86d57082ff637c9fc25deba1"
+  inputs-digest = "df2ca981cf83f86076ba666f8cb4684322cf78a8b366baa1b36a8bef351b617d"
   solver-name = "gps-cdcl"
   solver-version = 1

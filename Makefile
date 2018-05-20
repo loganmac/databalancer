@@ -90,9 +90,11 @@ install:
 		cp $(BUILD_DIR)/$$name $(INSTALL_DIR); \
 	done
 
-# run the tests with coverage and race detector
+# run the tests with coverage and race detector, and colorizer tool
 test:
-	go test -cover -race -v ./...
+	@command -v dep >/dev/null 2>&1 || echo "Installing test colorizer..." \
+		&& go get -u github.com/kyoh86/richgo
+	richgo test -cover -race -v ./...
 
 # cross-compile each binary in the list of binaries set in the project variables
 xp: clean deps

@@ -15,7 +15,9 @@ $ databalancer -mysql_address="192.168.99.100:3306"
 2017/01/06 20:47:32 Starting HTTP server on :8080
 ```
 
-The one endpoint that exists at the moment is the IngestLog endpoint at `/api/log`. The IngestLog endpoint expects a `HTTP PUT` request with a JSON body in the following format:
+### Ingest Endpoint
+
+One of the endpoints that exists at the moment is the IngestLog endpoint at `/api/log`. The IngestLog endpoint expects a `HTTP PUT` request with a JSON body in the following format:
 
 ```go
 // IngestLogBody is the format of the JSON required in the body of a request to
@@ -127,6 +129,138 @@ mysql> select * from raw_logs;
 6 rows in set (0.00 sec)
 ```
 
+### Query Endpoint
+
+Another API endpoint is the Query endpoint at `/api/query`. The Query endpoint expects a `HTTP POST` request with a JSON body in the following format:
+
+```go
+// QueryBody is the format of the JSON required in the body of a request to the QueryHandler
+type QueryBody struct {
+	Query string `json:"query"`
+}
+```
+
+An example request body to `POST /api/query` might be:
+
+```json
+{
+  "query": "SELECT * FROM `dog_registry`;"
+}
+```
+
+As you can see, the body defines:
+
+- The "query", which is a SQL SELECT query string
+
+If you're running the `databalancer` server on `localhost:8080`, you should be able to send the following request:
+
+```
+curl \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"query":"SELECT * FROM `dog_registry`;"}' \
+  http://localhost:8080/api/query
+```
+
+If this request is received by the server properly, the running server process should return something like:
+
+```json
+{
+  "results": [
+    {
+      "breed":"labrador",
+      "id":1,
+      "name":"spot",
+      "weight":100
+    },
+    {
+      "breed":"chihuahua",
+      "id":2,
+      "name":"max",
+      "weight":3
+    },
+    {
+      "breed":"pitbull",
+      "id":3,
+      "name":"sprinkle",
+      "weight":50
+    }
+  ]
+}
+```
+
+### Describe Endpoint
+
+Yet another API endpoint is the Describe endpoint at `/api/describe`. The Describe endpoint expects a `HTTP GET` request.
+
+If you're running the `databalancer` server on `localhost:8080`, you should be able to send the following request:
+
+```
+curl \
+  -H "Content-Type: application/json" \
+  -X GET \
+  http://localhost:8080/api/describe
+```
+
+If this request is received by the server properly, the running server process should return something like:
+
+```json
+{
+  "tables": [
+    {
+      "columns": [
+        {
+          "name": "id",
+          "nullable": false,
+          "type": "int"
+        },
+        {
+          "name": "age",
+          "nullable": true,
+          "type": "int"
+        },
+        {
+          "name": "breed",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "name": "name",
+          "nullable": true,
+          "type": "text"
+        }
+      ],
+      "name": "cat_registry"
+    },
+    {
+      "columns": [
+        {
+          "name": "id",
+          "nullable": false,
+          "type": "int"
+        },
+        {
+          "name": "name",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "name": "breed",
+          "nullable": true,
+          "type": "text"
+        },
+        {
+          "name": "weight",
+          "nullable": true,
+          "type": "int"
+        }
+      ],
+    "name": "dog_registry"
+    }
+  ]
+}
+```
+
 ## Objectives
 
 ### Dynamic table creation and logging
@@ -151,7 +285,7 @@ Once dynamic tables are created, we need to expose the ability to users to query
 
 Once you've added APIs for querying the datasets, create a pull request called `query-api`. Make note of any compromises/ considerations in your code due to the time constraint.
 
-Merge this PR. 
+Merge this PR.
 
 ### Multiple MySQL databases
 
