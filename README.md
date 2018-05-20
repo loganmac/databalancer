@@ -11,7 +11,7 @@ When you run the `databalancer` binary, you will see output like:
 ```
 $ databalancer -mysql_address="192.168.99.100:3306"
 
-2017/01/06 20:47:32 Connected to MySQL as dbuser at 192.168.99.100:3306
+2017/01/06 20:47:32 Connected to MySQL as root at 192.168.99.100:3306
 2017/01/06 20:47:32 Starting HTTP server on :8080
 ```
 
@@ -311,6 +311,8 @@ There's a `deps` target in the makefile, so just run `make deps`.
 
 For your convenience, a `docker-compose.yml` file is included with this repository. [Install Docker](https://www.docker.com/products/overview#/install_the_platform) and run `docker-compose up` from the root of the repository to use [Docker Compose](https://docs.docker.com/compose/) to manage the necessary infrastructure.
 
+To run the service against a distributed database (TiDB), run `make db_start`, then wait a few seconds and run `make db_setup`. To stop, run `make db_stop`.
+
 ## Databases and other infrastructure
 
 Use [Docker](https://docs.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) to manage your infrastructure.
@@ -349,9 +351,9 @@ Usage of C:\Users\marpaia\go\src\github.com\kolide\databalancer\databalancer.exe
   -mysql_database string
         The MySQL database to use (default "databalancer")
   -mysql_password string
-        The MySQL user account password (default "dbpassword")
+        The MySQL user account password (default "")
   -mysql_username string
-        The MySQL user account username (default "dbuser")
+        The MySQL user account username (default "root")
   -server_address string
         The address and port to serve the local HTTP server (default ":8080")
 ```
