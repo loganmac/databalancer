@@ -76,10 +76,6 @@ func (t *Table) Insert(logs logs.JSON) error {
 
 // QueryJSON returns rows as a representation that can be marshalled to JSON
 func (c *Client) QueryJSON(query string) (logs.JSON, error) {
-	_, err := c.DescribeDatabase()
-	if err != nil {
-		return nil, errors.Wrap(err, "crap")
-	}
 	// make the query. we use a prepared statement here because mysql
 	// only returns column type info if the statement is prepared,
 	// otherwise everything will be typed as []byte
@@ -120,12 +116,13 @@ func (c *Client) QueryJSON(query string) (logs.JSON, error) {
 // DescribeDatabase returns the table names, columns, and types
 func (c *Client) DescribeDatabase() (logs.JSON, error) {
 	var tableDescriptions []struct {
-		Schema   string // not used yet
+		Schema   string // not used yet, but could be
 		Name     string // table name
 		Column   string // column name
 		Nullable string // YES/NO if column nullable
 		Datatype string // column data type
 	}
+	// query the table descriptions
 	err := c.Select(&tableDescriptions,
 		"SELECT `TABLE_SCHEMA` as `schema`, "+
 			"`TABLE_NAME` as `name`, "+
@@ -133,19 +130,49 @@ func (c *Client) DescribeDatabase() (logs.JSON, error) {
 			"`IS_NULLABLE` as `nullable`, "+
 			"`DATA_TYPE` as `datatype` "+
 			"FROM information_schema.columns "+
-			"WHERE table_schema <> 'information_schema'")
+			"WHERE table_schema <> 'information_schema' "+
+			"ORDER BY `name` ASC")
 	if err != nil {
 		return nil, errors.Wrap(err, "describing databse")
 	}
 
+	// list of tables with name and column
 	var tables logs.JSON
-	for i, tableDescription := range tableDescriptions {
-		_ = i
-		_ = tableDescription
-		_ = tables
+	// the current table being iterated
+	var currentTable map[string]interface{}
+	for _, tableDescription := range tableDescriptions {
+		// set whether column is nullable
+		nullable := false
+		if tableDescription.Nullable == "YES" {
+			nullable = true
+		}
+		// create the column
+		column := map[string]interface{}{
+			"name":     tableDescription.Column,
+			"nullable": nullable,
+			"type":     tableDescription.Datatype,
+		}
+		// if the current table is this table
+		if tableDescription.Name == currentTable["name"] {
+			// append this column to the current table
+			currentTable["columns"] = append(currentTable["columns"].([]map[string]interface{}), column)
+			continue
+		}
+
+		// create a list of columns
+		var columns []map[string]interface{}
+		// add the column to it
+		columns = append(columns, column)
+		// create the table
+		table := map[string]interface{}{
+			"name":    tableDescription.Name,
+			"columns": columns,
+		}
+		// change the current table
+		currentTable = table
+		// add it to the list of tables
+		tables = append(tables, table)
 	}
 
-	log.Printf("%+v\n", tableDescriptions)
-
-	return nil, nil
+	return tables, nil
 }
