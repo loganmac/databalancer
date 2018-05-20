@@ -173,7 +173,7 @@ If that all is too easy, consider the following questions and implement solution
 
 ## Installing dependencies
 
-If you haven't used `go get` to install this project into `$GOPATH/src/github.com/kolide/databalancer`, then run `go get` from the root of the repository.
+There's a `deps` target in the makefile, so just run `make deps`.
 
 For your convenience, a `docker-compose.yml` file is included with this repository. [Install Docker](https://www.docker.com/products/overview#/install_the_platform) and run `docker-compose up` from the root of the repository to use [Docker Compose](https://docs.docker.com/compose/) to manage the necessary infrastructure.
 
@@ -200,7 +200,7 @@ Make sure you have done the following:
 If so, then you are ready to build the code via:
 
 ```
-go build
+make build
 ```
 
 This should create a binary called `databalancer` if you're using OS X or Linux and `databalancer.exe` if you're using Windows. To run the program, simple run the created binary.
