@@ -44,3 +44,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/xwb1989/sqlparser"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/jmoiron/sqlx"

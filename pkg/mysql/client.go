@@ -1,25 +1,25 @@
 package mysql
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
 	_ "github.com/go-sql-driver/mysql" //mysql driver
+	"github.com/jmoiron/sqlx"
 	"github.com/kolide/databalancer-logan/pkg/logs"
 	"github.com/pkg/errors"
 )
 
 // Client is a connection to a MySQL database
 type Client struct {
-	*sql.DB // underlying database
+	*sqlx.DB // underlying database
 }
 
 // Table defines methods for inserting and querying logs for that table
 type Table struct {
-	*sql.DB                   // database for table
-	name    string            // table name
-	schema  map[string]string // schema of the table from request
+	*sqlx.DB                   // database for table
+	name     string            // table name
+	schema   map[string]string // schema of the table from request
 }
 
 // NewClient makes a new MySQL database client and ensures that it's connected
@@ -32,7 +32,7 @@ func NewClient(username, password, address, name string) (*Client, error) {
 		name,
 	)
 	// Using our connection string, we attempt to open a MySQL connection
-	db, err := sql.Open("mysql", connectionString)
+	db, err := sqlx.Open("mysql", connectionString)
 	if err != nil {
 		return nil, errors.Wrap(err, "opening database")
 	}
@@ -79,20 +79,41 @@ func (t *Table) Insert(logs logs.JSON) error {
 	return nil
 }
 
-// Query returns stringmap results of logs that match the query
-func (c *Client) Query(query string) (logs.JSON, error) {
-	// make the query
-	rows, err := c.DB.Query(query)
+// QueryJSON returns rows as a representation that can be marshalled to JSON
+func (c *Client) QueryJSON(query string) (logs.JSON, error) {
+	// make the query. we use a prepared statement here because mysql
+	// only returns column type info if the statement is prepared,
+	// otherwise everything will be typed as []byte
+	stmt, err := c.Preparex(query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "querying database with query '%s'", query)
 	}
+	defer stmt.Close()
+
+	// execute the query
+	rows, err := stmt.Queryx()
+	if err != nil {
+		return nil, errors.Wrapf(err, "retrieving rows of query '%s'", query)
+	}
 	defer rows.Close()
 
-	// read the rows as json
-	results, err := RowsToJSON(rows)
-	if err != nil {
-		return nil, errors.Wrap(err, "converting rows to generic json format")
+	// scan the rows into a JSON representation
+	var results []map[string]interface{}
+	for rows.Next() {
+		// create a row
+		row := make(map[string]interface{})
+		// scan the row
+		if err := rows.MapScan(row); err != nil {
+			return nil, errors.Wrapf(err, "scanning row of query '%s'", query)
+		}
+		// the mysql driver returns text fields as []byte,
+		// so cast to string if any fields have that type
+		for k, v := range row {
+			if b, ok := v.([]byte); ok {
+				row[k] = string(b)
+			}
+		}
+		results = append(results, row)
 	}
-
 	return results, nil
 }
