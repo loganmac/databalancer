@@ -4,7 +4,6 @@ import (
 	"flag"
 	"log"
 
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/kolide/databalancer-logan/pkg/logs"
 	"github.com/kolide/databalancer-logan/pkg/mysql"
 	"github.com/kolide/databalancer-logan/pkg/server"
@@ -21,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	// Using data from command-line flags, we create a MySQL client
-	dbClient, err := mysql.Create(*dbUsername, *dbPassword, *dbAddress, *dbName)
+	dbClient, err := mysql.CreateClient(*dbUsername, *dbPassword, *dbAddress, *dbName)
 	if err != nil {
 		log.Fatalf("Failed connecting to MySQL: %+v", err)
 	}
