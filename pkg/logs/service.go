@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"encoding/json"
 	"log"
 
 	"github.com/pkg/errors"
@@ -9,12 +8,12 @@ import (
 
 // DBClient is the interface that defines methods for creating tables in a database
 type DBClient interface {
-	FindOrCreateTable(family Family, schema Schema) (Table, error)
+	CreateTable(family Family, schema Schema) (Table, error)
 }
 
-// Table is an interface for inserting logs into a table
+// Table is an interface for inserting records into a table
 type Table interface {
-	Insert(log []byte) error
+	Insert(records JSON) error
 }
 
 // Service contains the databases to ingest logs into
@@ -28,59 +27,62 @@ type Family string
 // Schema describes the structure of a log type
 type Schema map[string]string
 
-// Raw is the raw JSON of a log
-type Raw map[string]interface{}
+// JSON is a representation of data that can be marshalled to JSON
+type JSON []map[string]interface{}
 
 // CreateService returns a `Service`, backed by a `DB`
 func CreateService(db DBClient) *Service {
 	return &Service{db: db}
 }
 
-// Ingest is a method which ingests logs into the database.
-// It finds or creates the database table,  parses logs,
-// and writes the logs to the selected table.
-func (s *Service) Ingest(family Family, schema Schema, logs []Raw) error {
-	table, err := s.db.FindOrCreateTable(family, schema)
+// Ingest is a method which parses and stores logs into the database.
+// It validates the logs match the schema, creates the database table,
+// and then writes the logs to it.
+func (s *Service) Ingest(family Family, schema Schema, logs JSON) error {
+	// validate that the logs match the given schema and contain valid types
+	if err := checkLogSchema(schema, logs); err != nil {
+		// TODO: check for specific error types, wrap in error type that
+		// any exposing interface can use to create nicer error messaging
+		return errors.Wrapf(err, "validating %s logs against schema", family)
+	}
+
+	table, err := s.db.CreateTable(family, schema)
 	if err != nil {
-		return errors.Wrapf(err, "finding or creating table '%s'", family)
+		// TODO: check and convert errors
+		return errors.Wrapf(err, "creating table %s", family)
 	}
 
-	log.Printf("Received logs for the %s log family\n", family)
-	for column, columnType := range schema {
-		log.Printf("Log values for the field %s of the %s log will be of type %s\n", column, family, columnType)
+	if err := table.Insert(logs); err != nil {
+		// TODO: check and convert errors
+		return err
 	}
+	return nil
+}
 
+// checkLogSchema validates that all logs match the given schema
+func checkLogSchema(schema Schema, logs JSON) error {
 	for _, logEvent := range logs {
-		log.Printf("Handling a new log event for the %s log family\n", family)
 		for field, value := range logEvent {
 			columnType, ok := schema[field]
 			if !ok {
-				return errors.Errorf(
-					"Data type for the field %s was not specified in the %s schema map\n",
-					field,
-					family,
-				)
+				return errors.Errorf("field %s was not specified in the schema", field)
 			}
 			switch columnType {
 			case "string":
-				log.Printf("The value of the %s field in the %s log event is %s\n", field, family, value.(string))
+				log.Printf("The value of the %s field is %s\n", field, value.(string))
 			case "int":
-				log.Printf("The value of the %s field in the %s log event is %d\n", field, family, int(value.(float64)))
+				log.Printf("The value of the %s field is %d\n", field, int(value.(float64)))
 			default:
-				return errors.Errorf("Unsupported data type in %s log for the field %s: %s\n", family, field, columnType)
+				// TODO: convert to error that can be used to convery more information to
+				// any exposing interfaces (http, grpc, etc)
+				return errors.Errorf("Unsupported data type in log for the field %s: %s\n", field, columnType)
 			}
 		}
-
-		// Marshal the log event back into JSON to store it in the database
-		logJSON, err := json.Marshal(logEvent)
-		if err != nil {
-			return err
-		}
-
-		if err := table.Insert(logJSON); err != nil {
-			return err
-		}
 	}
-
 	return nil
+}
+
+// String method for Family in case underlying type changes
+func (f Family) String() string {
+	return string(f)
 }
