@@ -34,6 +34,7 @@ type handler struct {
 type LogService interface {
 	Ingest(family logs.Family, schema logs.Schema, logs logs.JSON) error
 	Query(query string) (logs.JSON, error)
+	DescribeLogs() (logs.JSON, error)
 }
 
 // ServeHTTP implements the HandlerFunc interface in the net/http package.
@@ -47,6 +48,12 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// POST /api/query
 	if r.URL.Path == "/api/query" && r.Method == "POST" {
 		h.queryHandler(w, r)
+		return
+	}
+
+	// GET /api/describe
+	if r.URL.Path == "/api/describe" && r.Method == "GET" {
+		h.describeHandler(w, r)
 		return
 	}
 
@@ -85,23 +92,14 @@ func (h *handler) ingestLogHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("{}"))
 }
 
-// queryBody is the format of the JSON required in the body of a request to
-// perform a query
-type queryBody struct {
-	Query string `json:"query"`
-}
-
-// query response is the format of the response to a query
-type queryResponse struct {
-	Results logs.JSON `json:"results"`
-}
-
 // queryHandler is an HTTP handler which ingests logs from the network
 func (h *handler) queryHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// decode the request
-	var body queryBody
+	var body struct {
+		Query string `json:"query"`
+	}
 	err := json.NewDecoder(r.Body).Decode(&body)
 	// TODO: Add validation, responding about how the request was invalid with a 400 request
 	if err != nil {
@@ -111,7 +109,7 @@ func (h *handler) queryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ingest the logs through the service
+	// query the logs service
 	results, err := h.logSvc.Query(body.Query)
 	if err != nil {
 		http.Error(w, "An error occured querying logs: "+err.Error(), http.StatusInternalServerError)
@@ -120,9 +118,46 @@ func (h *handler) queryHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// set json content-type
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 
-	if err := json.NewEncoder(w).Encode(queryResponse{Results: results}); err != nil {
+	// format the response as JSON with a results field that's a list of results
+	var queryResponse struct {
+		Results logs.JSON `json:"results"`
+	}
+	queryResponse.Results = results
+
+	if err := json.NewEncoder(w).Encode(queryResponse); err != nil {
+		http.Error(w, "An error occured encoding the results: "+err.Error(), http.StatusInternalServerError)
+		// TODO: change to structured logger and use debug level logging, or report to error aggregation service
+		log.Printf("error encoding results: %+v\n", err)
+		return
+	}
+}
+
+// describeHandler is an HTTP handler which ingests logs from the network
+func (h *handler) describeHandler(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	// describe the logs of the log service
+	tables, err := h.logSvc.DescribeLogs()
+	if err != nil {
+		http.Error(w, "An error occured describing logs: "+err.Error(), http.StatusInternalServerError)
+		// TODO: change to structured logger and use debug level logging, or report to error aggregation service
+		log.Printf("error describing logs: %+v\n", err)
+		return
+	}
+
+	// set json content-type
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	// format the response as JSON with a results field that's a list of results
+	var describeResponse struct {
+		Tables logs.JSON `json:"tables"`
+	}
+	describeResponse.Tables = tables
+
+	if err := json.NewEncoder(w).Encode(describeResponse); err != nil {
 		http.Error(w, "An error occured encoding the results: "+err.Error(), http.StatusInternalServerError)
 		// TODO: change to structured logger and use debug level logging, or report to error aggregation service
 		log.Printf("error encoding results: %+v\n", err)

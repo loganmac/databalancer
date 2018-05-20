@@ -11,6 +11,7 @@ import (
 type DBClient interface {
 	CreateTable(family Family, schema Schema) (Table, error)
 	QueryJSON(query string) (JSON, error)
+	DescribeDatabase() (JSON, error)
 }
 
 // Table is an interface for inserting records into a table
@@ -64,8 +65,11 @@ func (s *Service) Ingest(family Family, schema Schema, logs JSON) error {
 	return nil
 }
 
-// Query receives a SQL query that it
+// Query receives a SQL query that it sends to the database
+// as long as it is a SELECT
 func (s *Service) Query(query string) (JSON, error) {
+	// parse the query, also verifies that it's a valid
+	// single statement query
 	stmt, err := sqlparser.Parse(query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing query '%s'", query)
@@ -79,8 +83,22 @@ func (s *Service) Query(query string) (JSON, error) {
 		}
 		return results, nil
 	default:
+		// query wasn't really a query, so return readonly error
 		return nil, ErrReadOnly
 	}
+}
+
+// DescribeLogs describes the database tables and columns as JSON
+func (s *Service) DescribeLogs() (JSON, error) {
+	// TODO: right now this just returns the same format as the database,
+	// but it would be better if this service defined a structure that
+	// the databases should use describe their data, in the same
+	// language that the ingestion uses for schema and family etc
+	results, err := s.db.DescribeDatabase()
+	if err != nil {
+		return nil, errors.Wrap(err, "describing logs")
+	}
+	return results, nil
 }
 
 // checkLogSchema validates that all logs match the given schema
