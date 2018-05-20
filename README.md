@@ -311,6 +311,8 @@ There's a `deps` target in the makefile, so just run `make deps`.
 
 For your convenience, a `docker-compose.yml` file is included with this repository. [Install Docker](https://www.docker.com/products/overview#/install_the_platform) and run `docker-compose up` from the root of the repository to use [Docker Compose](https://docs.docker.com/compose/) to manage the necessary infrastructure.
 
+To run the service against a distributed database (TiDB), run `make db_start`, then wait a few seconds and run `make db_setup`. To stop, run `make db_stop`.
+
 ## Databases and other infrastructure
 
 Use [Docker](https://docs.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) to manage your infrastructure.
