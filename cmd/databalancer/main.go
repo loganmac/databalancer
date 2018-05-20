@@ -11,8 +11,8 @@ import (
 
 func main() {
 	// Key variables are set as command-line flags
-	dbUsername := flag.String("mysql_username", "dbuser", "The MySQL user account username")
-	dbPassword := flag.String("mysql_password", "dbpassword", "The MySQL user account password")
+	dbUsername := flag.String("mysql_username", "root", "The MySQL user account username")
+	dbPassword := flag.String("mysql_password", "", "The MySQL user account password")
 	dbAddress := flag.String("mysql_address", "localhost:3306", "The MySQL server address")
 	dbName := flag.String("mysql_database", "databalancer", "The MySQL database to use")
 	serverAddress := flag.String("server_address", ":8080", "The address and port to serve the local HTTP server")
