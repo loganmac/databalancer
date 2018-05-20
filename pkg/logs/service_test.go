@@ -1,6 +1,8 @@
 package logs_test
 
 import (
+	"io/ioutil"
+	"log"
 	"testing"
 
 	"github.com/kolide/databalancer-logan/pkg/logs"
@@ -13,6 +15,14 @@ type mockTable struct{}
 
 func (m *mockDB) CreateTable(family logs.Family, schema logs.Schema) (logs.Table, error) {
 	return &mockTable{}, nil
+}
+
+func (m *mockDB) QueryJSON(query string) (logs.JSON, error) {
+	return logs.JSON{}, nil
+}
+
+func (m *mockDB) DescribeDatabase() (logs.JSON, error) {
+	panic("not implemented")
 }
 
 func (m *mockTable) Insert(records logs.JSON) error {
@@ -32,6 +42,9 @@ type ingestCase struct {
 type rawLog map[string]interface{}
 
 func TestIngest(t *testing.T) {
+	// disable logging
+	log.SetOutput(ioutil.Discard)
+
 	// GIVEN
 	service := logs.CreateService(&mockDB{})
 
@@ -101,6 +114,71 @@ func TestIngest(t *testing.T) {
 	for _, tt := range failureCases {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Error(t, service.Ingest(tt.family, tt.schema, tt.logs))
+		})
+	}
+}
+
+// describes a test case for queryCase
+type queryCase struct {
+	name   string
+	query  string
+	result error
+}
+
+func TestQuery(t *testing.T) {
+	// GIVEN
+	service := logs.CreateService(&mockDB{})
+
+	// THEN
+	successCases := []queryCase{
+		{
+			name:  "a select query should be executed without problems",
+			query: "SELECT * FROM `dog_registry`;",
+		},
+	}
+
+	for _, tt := range successCases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Query(tt.query)
+			assert.NoError(t, err)
+		})
+	}
+
+	failureCases := []queryCase{
+		{
+			name:  "multiple select statements should return an error",
+			query: "SELECT * FROM `dog_registry`; SELECT * FROM `users`;",
+		},
+		{
+			name:  "invalid statements should return an error",
+			query: "SELECT * FROMa;",
+		},
+	}
+
+	for _, tt := range failureCases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Query(tt.query)
+			assert.Error(t, err)
+		})
+	}
+
+	errCases := []queryCase{
+		{
+			name:   "an INSERT statement should return a read only error",
+			query:  "INSERT INTO `dog_registry`(`name`, `weight`) VALUES('spot', 130);",
+			result: logs.ErrReadOnly,
+		},
+		{
+			name:   "a DROP statement should return a read only error",
+			query:  "DROP TABLE `dog_registry`;",
+			result: logs.ErrReadOnly,
+		},
+	}
+
+	for _, tt := range errCases {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := service.Query(tt.query)
+			assert.Equal(t, tt.result, err)
 		})
 	}
 }
