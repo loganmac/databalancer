@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/kolide/databalancer-logan/pkg/db"
 	"github.com/kolide/databalancer-logan/pkg/logs"
 	"github.com/pkg/errors"
 )
@@ -50,7 +49,7 @@ func Create(username, password, address, name string) (*Client, error) {
 
 // FindOrCreateTable finds or creates the table based on the given
 // attributes with the client, caching it in the process
-func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (db.Table, error) {
+func (c *Client) FindOrCreateTable(family logs.Family, schema logs.Schema) (logs.Table, error) {
 	if table, ok := c.tables[family]; ok == true {
 		return table, nil
 	}

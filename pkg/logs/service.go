@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/kolide/databalancer-logan/pkg/db"
 	"github.com/pkg/errors"
 )
 
 // DBClient is the interface that defines methods for creating tables in a database
 type DBClient interface {
-	FindOrCreateTable(family Family, schema Schema) (db.Table, error)
+	FindOrCreateTable(family Family, schema Schema) (Table, error)
+}
+
+// Table is an interface for inserting logs into a table
+type Table interface {
+	Insert(log []byte) error
 }
 
 // Service contains the databases to ingest logs into
