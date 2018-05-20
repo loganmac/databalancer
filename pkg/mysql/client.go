@@ -18,8 +18,8 @@ type Client struct {
 // Table defines methods for inserting and querying logs for that table
 type Table struct {
 	*sqlx.DB                   // database for table
-	name     string            // table name
-	schema   map[string]string // schema of the table from request
+	Name     string            // table name
+	Schema   map[string]string // schema of the table from request
 }
 
 // NewClient makes a new MySQL database client and ensures that it's connected
@@ -52,20 +52,19 @@ func (c *Client) CreateTable(name logs.Family, schema logs.Schema) (logs.Table, 
 	// construct create table statement
 	create := CreateTableStatement(name.String(), schema)
 
-	// create the table with the template args
-	log.Printf("Create statment: \n%+v\n", create)
+	// create the table
 	_, err := c.Exec(create)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating %s table", name)
 	}
 
-	return &Table{DB: c.DB, name: name.String(), schema: schema}, nil
+	return &Table{DB: c.DB, Name: name.String(), Schema: schema}, nil
 }
 
 // Insert creates new logs in the supplied table
 func (t *Table) Insert(logs logs.JSON) error {
 	// construct insert statement
-	insert, args := InsertTableStatement(t.name, t.schema, logs)
+	insert, args := InsertTableStatement(t.Name, t.Schema, logs)
 
 	log.Printf("Insert statment: \n%+v\n", insert)
 	log.Printf("Args: \n%+v\n", args)
@@ -73,7 +72,7 @@ func (t *Table) Insert(logs logs.JSON) error {
 	// insert the data
 	_, err := t.Exec(insert, args...)
 	if err != nil {
-		return errors.Wrapf(err, "inserting records for %s table", t.name)
+		return errors.Wrapf(err, "inserting records for %s table", t.Name)
 	}
 
 	return nil
@@ -81,6 +80,10 @@ func (t *Table) Insert(logs logs.JSON) error {
 
 // QueryJSON returns rows as a representation that can be marshalled to JSON
 func (c *Client) QueryJSON(query string) (logs.JSON, error) {
+	_, err := c.DescribeDatabase()
+	if err != nil {
+		return nil, errors.Wrap(err, "crap")
+	}
 	// make the query. we use a prepared statement here because mysql
 	// only returns column type info if the statement is prepared,
 	// otherwise everything will be typed as []byte
@@ -116,4 +119,37 @@ func (c *Client) QueryJSON(query string) (logs.JSON, error) {
 		results = append(results, row)
 	}
 	return results, nil
+}
+
+// DescribeDatabase returns the table names, columns, and types
+func (c *Client) DescribeDatabase() (logs.JSON, error) {
+	var tableDescriptions []struct {
+		Schema   string // not used yet
+		Name     string // table name
+		Column   string // column name
+		Nullable string // YES/NO if column nullable
+		Datatype string // column data type
+	}
+	err := c.Select(&tableDescriptions,
+		"SELECT `TABLE_SCHEMA` as `schema`, "+
+			"`TABLE_NAME` as `name`, "+
+			"`COLUMN_NAME` as `column`, "+
+			"`IS_NULLABLE` as `nullable`, "+
+			"`DATA_TYPE` as `datatype` "+
+			"FROM information_schema.columns "+
+			"WHERE table_schema <> 'information_schema'")
+	if err != nil {
+		return nil, errors.Wrap(err, "describing databse")
+	}
+
+	var tables logs.JSON
+	for i, tableDescription := range tableDescriptions {
+		_ = i
+		_ = tableDescription
+		_ = tables
+	}
+
+	log.Printf("%+v\n", tableDescriptions)
+
+	return nil, nil
 }

@@ -10,7 +10,7 @@ import (
 // DBClient is the interface that defines methods for creating tables in a database
 type DBClient interface {
 	CreateTable(family Family, schema Schema) (Table, error)
-	Query(query string) (JSON, error)
+	QueryJSON(query string) (JSON, error)
 }
 
 // Table is an interface for inserting records into a table
@@ -29,7 +29,7 @@ type Family string
 // Schema describes the structure of a log type
 type Schema map[string]string
 
-// JSON is the JSON formatted logs
+// JSON represents data that can be marshalled to JSON
 type JSON []map[string]interface{}
 
 // ErrReadOnly is returned when valid SQL other than a SELECT is sent
@@ -73,7 +73,6 @@ func (s *Service) Ingest(family Family, schema Schema, logs JSON) error {
 
 // Query receives a SQL query that it
 func (s *Service) Query(query string) (JSON, error) {
-
 	stmt, err := sqlparser.Parse(query)
 	if err != nil {
 		return nil, errors.Wrapf(err, "parsing query '%s'", query)
@@ -81,7 +80,7 @@ func (s *Service) Query(query string) (JSON, error) {
 	switch stmt.(type) {
 	case *sqlparser.Select:
 		// statement is good, and a select, so pass it through
-		results, err := s.db.Query(query)
+		results, err := s.db.QueryJSON(query)
 		if err != nil {
 			return nil, errors.Wrap(err, "querying database client")
 		}
