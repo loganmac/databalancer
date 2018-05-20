@@ -75,10 +75,33 @@ clean:
 	@echo "Cleaning up old builds..."
 	@rm -r $(BUILD_DIR) >/dev/null 2>&1 ||:
 
+# start TiDB on docker-compose
+db_start:
+	@echo "Stopping docker-compose MySQL..."
+	@docker-compose down
+	@command -v mycli >/dev/null 2>&1 || (echo "Installing myCLI mysql tool..." && \
+		pip install -U mycli)
+	@test -d .local || git clone https://github.com/loganmac/tidb-docker-compose.git .local
+	@cd .local && docker-compose up -d
+	@echo
+	@echo "Running TiDB in docker-compose. If you are seeing failures or slow inserts, \
+	and you are on a mac, give Docker more resources (especially ram)."
+	@echo
+	@echo "Please wait a few seconds for the cluster to start, then run 'make db_setup'"
+
+# setup the db
+db_setup:
+	@mycli -h 127.0.0.1 -u root -e "CREATE DATABASE IF NOT EXISTS databalancer;"
+	@echo "Database 'databalancer' created."
+
+# stop TiDB on docker-compose
+db_stop:
+	@cd .local && docker-compose down
+
 # install dep tool (if necessary) and dependencies
 deps:
-	@command -v dep >/dev/null 2>&1 || echo "Installing dep tool..." \
-		&& go get -u github.com/golang/dep/cmd/dep
+	@command -v dep >/dev/null 2>&1 || (echo "Installing dep tool..." \
+		&& go get -u github.com/golang/dep/cmd/dep)
 	@echo "Installing dependencies..."
 	@dep ensure -vendor-only && echo "Dependencies installed successfully."
 
