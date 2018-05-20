@@ -63,7 +63,7 @@ func (c *Client) CreateTable(name logs.Family, schema logs.Schema) (logs.Table, 
 }
 
 // Insert creates new logs in the supplied table
-func (t *Table) Insert(logs logs.Raw) error {
+func (t *Table) Insert(logs logs.JSON) error {
 	// construct insert statement
 	insert, args := InsertTableStatement(t.name, t.schema, logs)
 
@@ -77,4 +77,22 @@ func (t *Table) Insert(logs logs.Raw) error {
 	}
 
 	return nil
+}
+
+// Query returns stringmap results of logs that match the query
+func (c *Client) Query(query string) (logs.JSON, error) {
+	// make the query
+	rows, err := c.DB.Query(query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "querying database with query '%s'", query)
+	}
+	defer rows.Close()
+
+	// read the rows as json
+	results, err := RowsToJSON(rows)
+	if err != nil {
+		return nil, errors.Wrap(err, "converting rows to generic json format")
+	}
+
+	return results, nil
 }

@@ -4,16 +4,18 @@ import (
 	"log"
 
 	"github.com/pkg/errors"
+	"github.com/xwb1989/sqlparser"
 )
 
 // DBClient is the interface that defines methods for creating tables in a database
 type DBClient interface {
 	CreateTable(family Family, schema Schema) (Table, error)
+	Query(query string) (JSON, error)
 }
 
 // Table is an interface for inserting records into a table
 type Table interface {
-	Insert(records Raw) error
+	Insert(records JSON) error
 }
 
 // Service contains the databases to ingest logs into
@@ -27,18 +29,21 @@ type Family string
 // Schema describes the structure of a log type
 type Schema map[string]string
 
-// Raw is the raw JSON of logs
-type Raw []map[string]interface{}
+// JSON is the JSON formatted logs
+type JSON []map[string]interface{}
+
+// ErrReadOnly is returned when valid SQL other than a SELECT is sent
+var ErrReadOnly = errors.New("service can only be used to query records")
 
 // CreateService returns a `Service`, backed by a `DB`
 func CreateService(db DBClient) *Service {
 	return &Service{db: db}
 }
 
-// Ingest is a method which parses and stores logs into the database.
+// Ingest parses and stores logs into the database.
 // It validates the logs match the schema, creates the database table,
 // and then writes the logs to it.
-func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
+func (s *Service) Ingest(family Family, schema Schema, logs JSON) error {
 	// validate that the logs match the given schema and contain valid types
 	if err := checkLogSchema(schema, logs); err != nil {
 		// TODO: check for specific error types, wrap in error type that
@@ -54,8 +59,7 @@ func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
 
 	// return if there are no logs to insert
 	// NOTE: I'm not sure this is desirable from a product perspective,
-	// but this allows you to make requests with just the schema to create
-	// tables
+	// but this allows you to make requests with just the schema to create tables
 	if len(logs) == 0 {
 		return nil
 	}
@@ -67,8 +71,28 @@ func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
 	return nil
 }
 
+// Query receives a SQL query that it
+func (s *Service) Query(query string) (JSON, error) {
+
+	stmt, err := sqlparser.Parse(query)
+	if err != nil {
+		return nil, errors.Wrapf(err, "parsing query '%s'", query)
+	}
+	switch stmt.(type) {
+	case *sqlparser.Select:
+		// statement is good, and a select, so pass it through
+		results, err := s.db.Query(query)
+		if err != nil {
+			return nil, errors.Wrap(err, "querying database client")
+		}
+		return results, nil
+	default:
+		return nil, ErrReadOnly
+	}
+}
+
 // checkLogSchema validates that all logs match the given schema
-func checkLogSchema(schema Schema, logs Raw) error {
+func checkLogSchema(schema Schema, logs JSON) error {
 	for _, logEvent := range logs {
 		for field, value := range logEvent {
 			columnType, ok := schema[field]
