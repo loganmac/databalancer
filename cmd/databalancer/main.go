@@ -20,7 +20,7 @@ func main() {
 	flag.Parse()
 
 	// Using data from command-line flags, we create a MySQL client
-	dbClient, err := mysql.NewClient(*dbUsername, *dbPassword, *dbAddress, *dbName)
+	dbClient, err := mysql.CreateClient(*dbUsername, *dbPassword, *dbAddress, *dbName)
 	if err != nil {
 		log.Fatalf("Failed connecting to MySQL: %+v", err)
 	}

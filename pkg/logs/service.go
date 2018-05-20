@@ -13,7 +13,7 @@ type DBClient interface {
 
 // Table is an interface for inserting records into a table
 type Table interface {
-	Insert(records Raw) error
+	Insert(records JSON) error
 }
 
 // Service contains the databases to ingest logs into
@@ -27,8 +27,8 @@ type Family string
 // Schema describes the structure of a log type
 type Schema map[string]string
 
-// Raw is the raw JSON of logs
-type Raw []map[string]interface{}
+// JSON is a representation of data that can be marshalled to JSON
+type JSON []map[string]interface{}
 
 // CreateService returns a `Service`, backed by a `DB`
 func CreateService(db DBClient) *Service {
@@ -38,7 +38,7 @@ func CreateService(db DBClient) *Service {
 // Ingest is a method which parses and stores logs into the database.
 // It validates the logs match the schema, creates the database table,
 // and then writes the logs to it.
-func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
+func (s *Service) Ingest(family Family, schema Schema, logs JSON) error {
 	// validate that the logs match the given schema and contain valid types
 	if err := checkLogSchema(schema, logs); err != nil {
 		// TODO: check for specific error types, wrap in error type that
@@ -52,14 +52,6 @@ func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
 		return errors.Wrapf(err, "creating table %s", family)
 	}
 
-	// return if there are no logs to insert
-	// NOTE: I'm not sure this is desirable from a product perspective,
-	// but this allows you to make requests with just the schema to create
-	// tables
-	if len(logs) == 0 {
-		return nil
-	}
-
 	if err := table.Insert(logs); err != nil {
 		// TODO: check and convert errors
 		return err
@@ -68,7 +60,7 @@ func (s *Service) Ingest(family Family, schema Schema, logs Raw) error {
 }
 
 // checkLogSchema validates that all logs match the given schema
-func checkLogSchema(schema Schema, logs Raw) error {
+func checkLogSchema(schema Schema, logs JSON) error {
 	for _, logEvent := range logs {
 		for field, value := range logEvent {
 			columnType, ok := schema[field]

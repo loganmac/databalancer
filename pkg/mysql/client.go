@@ -22,8 +22,8 @@ type Table struct {
 	schema  map[string]string // schema of the table from request
 }
 
-// NewClient makes a new MySQL database client and ensures that it's connected
-func NewClient(username, password, address, name string) (*Client, error) {
+// CreateClient makes a new MySQL database client and ensures that it's connected
+func CreateClient(username, password, address, name string) (*Client, error) {
 	connectionString := fmt.Sprintf(
 		"%s:%s@(%s)/%s?charset=utf8&parseTime=True&loc=Local",
 		username,
@@ -52,8 +52,7 @@ func (c *Client) CreateTable(name logs.Family, schema logs.Schema) (logs.Table, 
 	// construct create table statement
 	create := CreateTableStatement(name.String(), schema)
 
-	// create the table with the template args
-	log.Printf("Create statment: \n%+v\n", create)
+	// create the table
 	_, err := c.Exec(create)
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating %s table", name)
@@ -63,18 +62,14 @@ func (c *Client) CreateTable(name logs.Family, schema logs.Schema) (logs.Table, 
 }
 
 // Insert creates new logs in the supplied table
-func (t *Table) Insert(logs logs.Raw) error {
+func (t *Table) Insert(logs logs.JSON) error {
 	// construct insert statement
 	insert, args := InsertTableStatement(t.name, t.schema, logs)
-
-	log.Printf("Insert statment: \n%+v\n", insert)
-	log.Printf("Args: \n%+v\n", args)
 
 	// insert the data
 	_, err := t.Exec(insert, args...)
 	if err != nil {
 		return errors.Wrapf(err, "inserting records for %s table", t.name)
 	}
-
 	return nil
 }

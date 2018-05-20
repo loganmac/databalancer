@@ -9,23 +9,15 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LogService contains the methods for the log processing service
-type LogService interface {
-	Ingest(family logs.Family, schema logs.Schema, logs logs.Raw) error
-}
-
 // handler is an internal wrapper around HTTP handlers that allows us to pass
 // some services for our handlers
 type handler struct {
 	logSvc LogService
 }
 
-// IngestLogBody is the format of the JSON required in the body of a request to
-// the IngestLogHandler
-type IngestLogBody struct {
-	Family logs.Family `json:"family"`
-	Schema logs.Schema `json:"schema"`
-	Logs   logs.Raw    `json:"logs"`
+// LogService contains the methods for the log processing service
+type LogService interface {
+	Ingest(family logs.Family, schema logs.Schema, logs logs.JSON) error
 }
 
 // ServeHTTP implements the HandlerFunc interface in the net/http package.
@@ -45,7 +37,11 @@ func (h *handler) ingestLogHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// decode the request
-	var body IngestLogBody
+	var body struct {
+		Family logs.Family `json:"family"`
+		Schema logs.Schema `json:"schema"`
+		Logs   logs.JSON   `json:"logs"`
+	}
 	err := json.NewDecoder(r.Body).Decode(&body)
 	// TODO: Add validation, responding about how the request was invalid with a 400 request
 	if err != nil {

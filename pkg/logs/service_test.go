@@ -15,7 +15,7 @@ func (m *mockDB) CreateTable(family logs.Family, schema logs.Schema) (logs.Table
 	return &mockTable{}, nil
 }
 
-func (m *mockTable) Insert(records logs.Raw) error {
+func (m *mockTable) Insert(records logs.JSON) error {
 	return nil
 }
 
@@ -24,7 +24,7 @@ type ingestCase struct {
 	name   string
 	family logs.Family
 	schema logs.Schema
-	logs   logs.Raw
+	logs   logs.JSON
 	result error
 }
 
@@ -41,7 +41,7 @@ func TestIngest(t *testing.T) {
 			name:   "a correct schema should insert without problems",
 			family: "dog_registry",
 			schema: logs.Schema{"name": "string", "breed": "string", "weight": "int"},
-			logs: logs.Raw{
+			logs: logs.JSON{
 				rawLog{"name": "max", "breed": "chihuahua", "weight": float64(3)},
 				rawLog{"name": "spot", "breed": "husky", "weight": float64(130)},
 				rawLog{"name": "spike", "breed": "bulldog", "weight": float64(80)},
@@ -51,7 +51,7 @@ func TestIngest(t *testing.T) {
 			name:   "a schema with more fields than the logs should insert without problems",
 			family: "dog_registry",
 			schema: logs.Schema{"name": "string", "breed": "string", "weight": "int", "age": "int"},
-			logs: logs.Raw{
+			logs: logs.JSON{
 				rawLog{"name": "max", "breed": "chihuahua", "weight": float64(3)},
 				rawLog{"name": "spot", "breed": "husky", "weight": float64(130)},
 				rawLog{"name": "spike", "breed": "bulldog", "weight": float64(80)},
@@ -70,7 +70,7 @@ func TestIngest(t *testing.T) {
 			name:   "a schema with an unknown type should return an error",
 			family: "dog_registry",
 			schema: logs.Schema{"name": "float", "breed": "string", "weight": "int"},
-			logs: logs.Raw{
+			logs: logs.JSON{
 				rawLog{"name": "max", "breed": "chihuahua", "weight": float64(3)},
 				rawLog{"name": "spot", "breed": "husky", "weight": float64(130)},
 				rawLog{"name": "spike", "breed": "bulldog", "weight": float64(80)},
@@ -80,7 +80,7 @@ func TestIngest(t *testing.T) {
 			name:   "a schema that doesn't match the logs should return an error",
 			family: "dog_registry",
 			schema: logs.Schema{"name": "string", "breed": "string", "age": "int"},
-			logs: logs.Raw{
+			logs: logs.JSON{
 				rawLog{"name": "max", "breed": "chihuahua", "weight": float64(3)},
 				rawLog{"name": "spot", "breed": "husky", "weight": float64(130)},
 				rawLog{"name": "spike", "breed": "bulldog", "weight": float64(80)},
@@ -90,7 +90,7 @@ func TestIngest(t *testing.T) {
 			name:   "heterogenous logs that contain more fields than the schema return an error",
 			family: "dog_registry",
 			schema: logs.Schema{"name": "string", "breed": "string", "weight": "int"},
-			logs: logs.Raw{
+			logs: logs.JSON{
 				rawLog{"name": "max", "breed": "chihuahua", "weight": float64(3), "age": float64(10)},
 				rawLog{"name": "spot", "breed": "husky", "weight": float64(130)},
 				rawLog{"name": "spike", "breed": "bulldog", "weight": float64(80)},
